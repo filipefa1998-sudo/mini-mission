@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Mission — Missionary Briefing</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ══ RESET ══ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --gold:#FDE68A;--gold2:#F59E0B;--navy:#0D1B2A;--teal:#0D9488;--blue:#2563EB;
+  --red:#DC2626;--purple:#7C3AED;--amber:#D97706;--violet:#9333EA;--green:#10B981;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--navy);}
+body{font-family:'Nunito',sans-serif;}
+
+/* ══ CANVAS STARFIELD ══ */
+#bg-canvas{position:fixed;inset:0;z-index:0;}
+
+/* ══ SLIDE SYSTEM ══ */
+#deck{position:relative;width:100vw;height:100vh;z-index:1;}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .5s ease,transform .5s ease;transform:scale(.97);}
+.slide.active{opacity:1;pointer-events:all;transform:scale(1);}
+.slide.exit{opacity:0;transform:scale(1.03);}
+
+/* ══ PROGRESS ══ */
+#prog-track{position:fixed;top:0;left:0;right:0;height:3px;background:rgba(255,255,255,.08);z-index:50;}
+#prog-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--gold));transition:width .4s ease;box-shadow:0 0 10px var(--gold2);}
+
+/* ══ SLIDE COUNTER ══ */
+#counter{position:fixed;top:14px;right:18px;font-family:'Space Mono',monospace;font-size:12px;color:rgba(255,255,255,.25);z-index:50;letter-spacing:1px;}
+
+/* ══ NAV ══ */
+.nav-btn{position:fixed;top:50%;transform:translateY(-50%);z-index:50;width:48px;height:48px;border-radius:50%;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:rgba(255,255,255,.4);font-size:20px;cursor:pointer;backdrop-filter:blur(8px);transition:all .25s;display:flex;align-items:center;justify-content:center;}
+.nav-btn:hover{border-color:var(--gold);color:var(--gold);background:rgba(253,230,138,.1);}
+#btn-prev{left:14px;}
+#btn-next{right:14px;}
+
+/* ══ DOT NAV ══ */
+#dots{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:50;}
+.dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);cursor:pointer;transition:all .3s;}
+.dot.on{background:var(--gold);transform:scale(1.5);}
+
+/* ══════════════════════════════════════
+   SLIDE 1 — CINEMATIC TITLE
+══════════════════════════════════════ */
+#s1{background:radial-gradient(ellipse 80% 60% at 50% 50%,#162640 0%,var(--navy) 100%);}
+.s1-dove{font-size:90px;animation:dovePulse 3s ease-in-out infinite;filter:drop-shadow(0 0 30px rgba(253,230,138,.5));}
+@keyframes dovePulse{0%,100%{transform:translateY(0) scale(1);filter:drop-shadow(0 0 30px rgba(253,230,138,.4))}50%{transform:translateY(-12px) scale(1.05);filter:drop-shadow(0 0 60px rgba(253,230,138,.8));}}
+.s1-title{font-family:'Fredoka One',cursive;font-size:clamp(64px,12vw,130px);color:var(--gold);line-height:.95;text-align:center;background:linear-gradient(135deg,#FDE68A,#F59E0B,#FDE68A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 4px 40px rgba(245,158,11,.4));margin:12px 0;}
+.s1-sub{font-family:'Space Mono',monospace;font-size:clamp(13px,2.2vw,18px);color:rgba(255,255,255,.45);letter-spacing:5px;text-transform:uppercase;text-align:center;}
+.s1-ward{font-size:clamp(16px,2.8vw,26px);color:#BAE6FD;font-weight:800;text-align:center;margin-top:10px;}
+.s1-hint{margin-top:44px;font-family:'Space Mono',monospace;font-size:13px;color:rgba(253,230,138,.35);letter-spacing:4px;text-transform:uppercase;animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:.9}}
+
+/* scanlines overlay */
+#s1::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;}
+
+/* ══════════════════════════════════════
+   SLIDE 2 — MISSION BRIEFING
+══════════════════════════════════════ */
+#s2{background:radial-gradient(ellipse 70% 70% at 20% 80%,#0A2A1A 0%,var(--navy) 70%);}
+.brief-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:90%;max-width:1100px;margin-top:16px;}
+.brief-card{position:relative;border-radius:24px;padding:28px 26px;overflow:hidden;transform:translateY(50px);opacity:0;transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .5s ease;}
+.brief-card.in{transform:translateY(0);opacity:1;}
+.brief-card::before{content:'';position:absolute;inset:0;border-radius:24px;border:1.5px solid rgba(255,255,255,.1);}
+.bc-glow{position:absolute;width:120px;height:120px;border-radius:50%;filter:blur(40px);opacity:.4;top:-20px;right:-20px;}
+.bc-num{font-family:'Space Mono',monospace;font-size:12px;color:rgba(255,255,255,.3);letter-spacing:3px;margin-bottom:10px;}
+.bc-icon{font-size:44px;margin-bottom:10px;display:block;}
+.bc-title{font-family:'Fredoka One',cursive;font-size:26px;color:white;margin-bottom:8px;}
+.bc-text{font-size:16px;font-weight:700;color:rgba(255,255,255,.65);line-height:1.65;}
+
+/* ══════════════════════════════════════
+   SLIDE 3 — ANIMATED TIMELINE
+══════════════════════════════════════ */
+#s3{background:radial-gradient(ellipse 60% 80% at 80% 20%,#1A1A3A 0%,var(--navy) 70%);}
+.tl-outer{width:88%;max-width:1000px;}
+.tl-row{display:flex;align-items:center;gap:0;margin-bottom:12px;transform:translateX(-80px);opacity:0;transition:all .45s ease;}
+.tl-row.in{transform:translateX(0);opacity:1;}
+.tl-time-box{font-family:'Space Mono',monospace;font-size:20px;color:var(--gold);width:82px;text-align:right;flex-shrink:0;padding-right:16px;}
+.tl-spine{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:28px;}
+.tl-dot{width:16px;height:16px;border-radius:50%;border:2.5px solid;flex-shrink:0;}
+.tl-line{width:2px;flex:1;min-height:10px;background:rgba(255,255,255,.08);}
+.tl-content{flex:1;background:rgba(255,255,255,.04);border-radius:16px;border:1.5px solid rgba(255,255,255,.07);padding:14px 20px;margin-left:14px;}
+.tl-label{font-family:'Fredoka One',cursive;font-size:21px;color:white;}
+.tl-sub{font-size:14px;font-weight:700;color:rgba(255,255,255,.4);margin-top:4px;letter-spacing:.5px;}
+
+/* ══════════════════════════════════════
+   SLIDE 4 — DOOR KNOCK INTERACTIVE
+══════════════════════════════════════ */
+#s4{background:radial-gradient(ellipse 80% 60% at 50% 50%,#1E1200 0%,var(--navy) 80%);}
+.dk-scene{position:relative;display:flex;align-items:center;justify-content:center;height:180px;margin:12px 0;}
+.dk-door{font-size:100px;cursor:pointer;display:inline-block;transition:transform .1s;user-select:none;filter:drop-shadow(0 0 20px rgba(245,158,11,.3));}
+.dk-door:active{transform:scale(.92);}
+.dk-door.knock{animation:knockAnim .45s ease;}
+@keyframes knockAnim{0%{transform:rotate(0) scale(1)}20%{transform:rotate(-10deg) scale(.95)}40%{transform:rotate(8deg) scale(.97)}60%{transform:rotate(-5deg)}80%{transform:rotate(3deg)}100%{transform:rotate(0) scale(1)}}
+.dk-wave{position:absolute;border-radius:50%;border:3px solid var(--gold2);opacity:0;width:80px;height:80px;pointer-events:none;animation:waveOut 0s;}
+@keyframes waveOut{0%{opacity:.9;transform:scale(.5)}100%{opacity:0;transform:scale(3)}}
+.dk-box{background:rgba(245,158,11,.08);border:2px solid rgba(245,158,11,.25);border-radius:24px;padding:26px 36px;max-width:820px;width:92%;text-align:center;}
+.dk-headline{font-family:'Fredoka One',cursive;font-size:32px;color:var(--gold);margin-bottom:14px;}
+.dk-body{font-size:18px;font-weight:700;color:rgba(255,255,255,.75);line-height:1.7;}
+.dk-tap{font-family:'Space Mono',monospace;font-size:13px;color:rgba(245,158,11,.5);letter-spacing:3px;margin-top:16px;text-transform:uppercase;animation:blink 2s infinite;}
+
+/* ══════════════════════════════════════
+   SLIDE 5 — ZONE GRID WITH SPOTLIGHT
+══════════════════════════════════════ */
+#s5{background:var(--navy);}
+.zones-intro{font-family:'Fredoka One',cursive;font-size:clamp(30px,5vw,52px);color:var(--gold);text-align:center;margin-bottom:6px;}
+.zones-hint{font-family:'Space Mono',monospace;font-size:13px;color:rgba(255,255,255,.3);letter-spacing:3px;text-align:center;margin-bottom:18px;text-transform:uppercase;}
+.zone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;width:92%;max-width:1200px;}
+.zt{border-radius:20px;padding:22px 18px;cursor:pointer;position:relative;overflow:hidden;transform:scale(.75);opacity:0;transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .4s,box-shadow .25s;border:1.5px solid rgba(255,255,255,.12);}
+.zt.in{transform:scale(1);opacity:1;}
+.zt:hover{transform:scale(1.04)!important;box-shadow:0 12px 40px rgba(0,0,0,.4);}
+.zt::before{content:'';position:absolute;inset:0;background:rgba(255,255,255,0);transition:background .2s;}
+.zt:hover::before{background:rgba(255,255,255,.06);}
+.zt-num{font-family:'Space Mono',monospace;font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px;margin-bottom:7px;}
+.zt-name{font-family:'Fredoka One',cursive;font-size:24px;color:white;margin-bottom:10px;}
+.zt-drv{font-size:14px;font-weight:800;color:rgba(255,255,255,.7);line-height:1.8;}
+.zt-homes{margin-top:9px;font-size:12px;color:rgba(255,255,255,.4);font-weight:800;}
+.zt-arrow{position:absolute;bottom:14px;right:16px;font-size:18px;opacity:.4;}
+.z1b{background:linear-gradient(135deg,rgba(13,148,136,.35),rgba(15,118,110,.25));}
+.z2b{background:linear-gradient(135deg,rgba(220,38,38,.35),rgba(185,28,28,.25));}
+.z3b{background:linear-gradient(135deg,rgba(124,58,237,.35),rgba(109,40,217,.25));}
+.z4b{background:linear-gradient(135deg,rgba(217,119,6,.35),rgba(180,83,9,.25));}
+.z5b{background:linear-gradient(135deg,rgba(37,99,235,.35),rgba(29,78,216,.25));}
+.z6b{background:linear-gradient(135deg,rgba(147,51,234,.35),rgba(126,34,206,.25));}
+
+/* ══════════════════════════════════════
+   ZONE DETAIL SLIDES 6–11
+══════════════════════════════════════ */
+.zd-slide{background:var(--navy);}
+.zd-header{width:100%;padding:20px 34px;display:flex;align-items:center;gap:20px;position:relative;}
+.zd-header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,.07);}
+.zd-badge{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;}
+.zd-zone-title{font-family:'Fredoka One',cursive;font-size:clamp(26px,4vw,40px);color:var(--gold);line-height:1;}
+.zd-zone-sub{font-size:14px;font-weight:800;color:rgba(255,255,255,.4);letter-spacing:1px;text-transform:uppercase;margin-top:5px;}
+.zd-back{margin-left:auto;font-family:'Space Mono',monospace;font-size:12px;color:rgba(255,255,255,.3);cursor:pointer;padding:8px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;transition:all .2s;letter-spacing:1px;text-transform:uppercase;}
+.zd-back:hover{color:var(--gold);border-color:var(--gold);}
+
+.zd-body{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:96%;max-width:1200px;flex:1;padding:14px 0 18px;}
+.zd-panel{border-radius:20px;padding:20px;border:1.5px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);transform:translateY(24px);opacity:0;transition:all .4s ease;}
+.zd-panel.in{transform:translateY(0);opacity:1;}
+.zd-ptitle{font-family:'Space Mono',monospace;font-size:12px;color:rgba(255,255,255,.45);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;}
+
+/* driver section */
+.driver-name{font-family:'Fredoka One',cursive;font-size:22px;color:white;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.name-chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{border-radius:20px;padding:6px 15px;font-size:13px;font-weight:800;transform:scale(0);opacity:0;transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .25s;display:inline-block;}
+.chip.in{transform:scale(1);opacity:1;}
+.chip-green{background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#6EE7B7;}
+.chip-blue{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#93C5FD;}
+.switch-note{margin-top:12px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:12px;font-size:13px;font-weight:800;color:rgba(255,255,255,.45);line-height:1.7;border-left:3px solid;}
+
+/* home schedule */
+.visit-bar{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;margin-bottom:9px;}
+.vb-num{font-family:'Fredoka One',cursive;font-size:26px;width:30px;text-align:center;flex-shrink:0;}
+.vb-info{flex:1;}
+.vb-who{font-weight:800;font-size:15px;color:white;}
+.vb-when{font-size:13px;font-weight:700;margin-top:3px;}
+.vb-green{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.15);}
+.vb-blue{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);}
+
+/* ══════════════════════════════════════
+   SLIDE 12 — SEND OFF
+══════════════════════════════════════ */
+#s12{background:radial-gradient(ellipse 80% 80% at 50% 50%,#102A18 0%,var(--navy) 70%);}
+.so-burst{font-size:80px;text-align:center;margin-bottom:16px;}
+.so-title{font-family:'Fredoka One',cursive;font-size:clamp(52px,10vw,100px);color:var(--gold);text-align:center;line-height:.95;filter:drop-shadow(0 0 60px rgba(253,230,138,.4));}
+.so-sub{font-size:clamp(16px,2.8vw,24px);font-weight:700;color:rgba(255,255,255,.6);text-align:center;margin-top:16px;max-width:700px;}
+.so-pills{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:32px;}
+.so-pill{background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.12);border-radius:50px;padding:14px 28px;font-family:'Fredoka One',cursive;font-size:21px;color:var(--gold);}
+
+/* ══ CONFETTI ══ */
+.conf{position:fixed;pointer-events:none;z-index:200;border-radius:3px;animation:confDrop linear forwards;}
+@keyframes confDrop{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(105vh) rotate(900deg)}}
+
+/* ══ PARTICLE ══ */
+.ptcl{position:fixed;border-radius:50%;pointer-events:none;z-index:200;animation:ptclFly ease-out forwards;}
+@keyframes ptclFly{0%{opacity:1;transform:scale(1) translate(0,0)}100%{opacity:0;transform:scale(0) translate(var(--tx),var(--ty))}}
+
+/* ══ AUDIO BARS ══ */
+.audio-bars{display:flex;align-items:flex-end;gap:3px;height:30px;justify-content:center;margin-top:6px;}
+.abar{width:4px;border-radius:3px;background:var(--gold2);animation:barBounce var(--s,.6s) ease-in-out infinite alternate;transform-origin:bottom;}
+@keyframes barBounce{0%{transform:scaleY(.2)}100%{transform:scaleY(1)}}
+
+/* ══ SCROLL TICKER ══ */
+.ticker-wrap{width:100%;overflow:hidden;background:rgba(255,255,255,.04);border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);padding:7px 0;position:absolute;bottom:44px;}
+.ticker{display:inline-flex;white-space:nowrap;animation:tickerScroll 30s linear infinite;}
+.ticker span{font-family:'Space Mono',monospace;font-size:11px;color:rgba(255,255,255,.3);letter-spacing:2px;padding:0 40px;}
+@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ══ EYEBROW ══ */
+.eyebrow{font-family:'Space Mono',monospace;font-size:13px;color:rgba(255,255,255,.35);letter-spacing:4px;text-transform:uppercase;margin-bottom:12px;text-align:center;}
+.slide-title{font-family:'Fredoka One',cursive;font-size:clamp(32px,5.5vw,54px);color:var(--gold);text-align:center;margin-bottom:6px;}
+</style>
+</head>
+<body>
+
+<!-- starfield canvas -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- progress -->
+<div id="prog-track"><div id="prog-fill" style="width:8.33%"></div></div>
+<div id="counter">1 / 12</div>
+
+<!-- nav -->
+<button class="nav-btn" id="btn-prev" onclick="nav(-1)">‹</button>
+<button class="nav-btn" id="btn-next" onclick="nav(1)">›</button>
+<div id="dots"></div>
+
+<div id="deck">
+
+<!-- ══ S1: TITLE ══ -->
+<div class="slide active" id="s1">
+  <div class="s1-title">Mini Mission<br>Weekend</div>
+  <div class="s1-ward">Riverton 24th Tongan Ward · 2026</div>
+  <div class="s1-sub" style="margin-top:6px;">Missionary Briefing</div>
+  <div class="audio-bars" style="margin-top:20px;">
+    <div class="abar" style="height:20px;--s:.5s;"></div>
+    <div class="abar" style="height:24px;--s:.7s;animation-delay:.1s"></div>
+    <div class="abar" style="height:18px;--s:.4s;animation-delay:.2s"></div>
+    <div class="abar" style="height:28px;--s:.6s;animation-delay:.15s"></div>
+    <div class="abar" style="height:22px;--s:.8s;animation-delay:.05s"></div>
+    <div class="abar" style="height:16px;--s:.45s;animation-delay:.25s"></div>
+    <div class="abar" style="height:26px;--s:.65s;animation-delay:.3s"></div>
+    <div class="abar" style="height:20px;--s:.55s;animation-delay:.1s"></div>
+  </div>
+  <div class="s1-hint" style="margin-top:28px;">PRESS SPACE OR → TO BEGIN</div>
+  <!-- ticker -->
+  <div class="ticker-wrap">
+    <div class="ticker">
+      <span>🕊️ MINI MISSION WEEKEND</span><span>✦ RIVERTON 24TH TONGAN WARD</span><span>✦ YOU ARE A MISSIONARY TONIGHT</span><span>✦ TEACH BY THE SPIRIT</span><span>✦ TESTIFY BOLDLY</span><span>🕊️ MINI MISSION WEEKEND</span><span>✦ RIVERTON 24TH TONGAN WARD</span><span>✦ YOU ARE A MISSIONARY TONIGHT</span><span>✦ TEACH BY THE SPIRIT</span><span>✦ TESTIFY BOLDLY</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S2: WHAT IS THIS ══ -->
+<div class="slide" id="s2">
+  <div class="eyebrow">Tonight's Mission</div>
+  <div class="slide-title">What Are You Doing? 🤔</div>
+  <div class="brief-grid">
+    <div class="brief-card" style="background:rgba(13,148,136,.12);" data-di="0">
+      <div class="bc-glow" style="background:#0D9488;"></div>
+      <div class="bc-num">01 / COMPANIONSHIP</div>
+      <span class="bc-icon">👥</span>
+      <div class="bc-title">You're Missionaries</div>
+      <div class="bc-text">You go out in companionships — just like the real thing. Two of you, side by side, sharing the gospel.</div>
+    </div>
+    <div class="brief-card" style="background:rgba(37,99,235,.12);" data-di="120">
+      <div class="bc-glow" style="background:#2563EB;"></div>
+      <div class="bc-num">02 / APPOINTMENTS</div>
+      <span class="bc-icon">🏠</span>
+      <div class="bc-title">Real Appointments</div>
+      <div class="bc-text">Visit real ward families — 4 visits per home, 20 minutes each. They have a lesson waiting for you.</div>
+    </div>
+    <div class="brief-card" style="background:rgba(124,58,237,.12);" data-di="240">
+      <div class="bc-glow" style="background:#7C3AED;"></div>
+      <div class="bc-num">03 / YOUR DRIVER</div>
+      <span class="bc-icon">🚗</span>
+      <div class="bc-title">Zone Driver</div>
+      <div class="bc-text">Every zone has 2 drivers. They are your mission president tonight — trust them, follow their lead.</div>
+    </div>
+    <div class="brief-card" style="background:rgba(245,158,11,.12);" data-di="360">
+      <div class="bc-glow" style="background:#F59E0B;"></div>
+      <div class="bc-num">04 / YOUR MISSION</div>
+      <span class="bc-icon">⭐</span>
+      <div class="bc-title">Make It Count</div>
+      <div class="bc-text">Teach by the Spirit. Testify with boldness. This is real. The families are waiting. Let's go.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S3: TIMELINE ══ -->
+<div class="slide" id="s3">
+  <div class="eyebrow">Saturday Evening</div>
+  <div class="slide-title">Tonight's Schedule ⏱️</div>
+  <div class="tl-outer">
+    <div class="tl-row" data-di="0">
+      <div class="tl-time-box">6:00</div>
+      <div class="tl-spine"><div class="tl-dot" style="border-color:var(--gold);background:var(--gold)"></div><div class="tl-line"></div></div>
+      <div class="tl-content"><div class="tl-label">⛪ Gather at the Chapel</div><div class="tl-sub">Load up with your driver · find your zone</div></div>
+    </div>
+    <div class="tl-row" data-di="100">
+      <div class="tl-time-box">6:15</div>
+      <div class="tl-spine"><div class="tl-dot" style="border-color:var(--green);background:var(--green)"></div><div class="tl-line"></div></div>
+      <div class="tl-content"><div class="tl-label">🚗 ALL ZONES DEPART</div><div class="tl-sub">Everyone leaves together at the same time</div></div>
+    </div>
+    <div class="tl-row" data-di="200">
+      <div class="tl-time-box">6:20</div>
+      <div class="tl-spine"><div class="tl-dot" style="border-color:var(--blue);background:var(--blue)"></div><div class="tl-line"></div></div>
+      <div class="tl-content"><div class="tl-label">🏠 First Home Visits 1 & 2</div><div class="tl-sub">Both companionships visit Home A · 20 min each</div></div>
+    </div>
+    <div class="tl-row" data-di="300">
+      <div class="tl-time-box">7:00</div>
+      <div class="tl-spine"><div class="tl-dot" style="border-color:var(--red);background:var(--red)"></div><div class="tl-line"></div></div>
+      <div class="tl-content"><div class="tl-label">🔄 Drivers Switch Homes</div><div class="tl-sub">Both drivers swap · each zone's two homes swap groups</div></div>
+    </div>
+    <div class="tl-row" data-di="400">
+      <div class="tl-time-box">7:10</div>
+      <div class="tl-spine"><div class="tl-dot" style="border-color:var(--blue);background:var(--blue)"></div><div class="tl-line"></div></div>
+      <div class="tl-content"><div class="tl-label">🏠 Second Home Visits 3 & 4</div><div class="tl-sub">Both companionships visit Home B · 20 min each</div></div>
+    </div>
+    <div class="tl-row" data-di="500">
+      <div class="tl-time-box">7:50</div>
+      <div class="tl-spine"><div class="tl-dot" style="border-color:var(--gold);background:var(--gold)"></div></div>
+      <div class="tl-content"><div class="tl-label">🎉 Back at the Chapel</div><div class="tl-sub">Debrief · testimonies · celebrate!</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S4: DOOR KNOCK ══ -->
+<div class="slide" id="s4">
+  <div class="eyebrow">The Secret Signal</div>
+  <div class="slide-title">The 20-Minute Knock 🚪</div>
+  <div class="dk-scene" id="dk-scene">
+    <div class="dk-wave" id="dkw1"></div>
+    <div class="dk-wave" id="dkw2"></div>
+    <div class="dk-wave" id="dkw3"></div>
+    <div class="dk-door" id="dk-door" onclick="doKnock()">🚪</div>
+  </div>
+  <div class="dk-box">
+    <div class="dk-headline">How the Door Knock Works</div>
+    <div class="dk-body">
+      When your <strong style="color:var(--gold)">20 minutes is almost up</strong>, the next companionship walks up to the door and <strong style="color:var(--gold)">knocks</strong>.<br><br>
+      That's the signal — time to wrap your message and bear your testimony powerfully before leaving.
+    </div>
+    <div class="dk-tap">👆 tap the door to practice</div>
+  </div>
+</div>
+
+<!-- ══ S5: ZONE GRID ══ -->
+<div class="slide" id="s5">
+  <div class="zones-intro">Find Your Zone 🔍</div>
+  <div class="zones-hint">Tap a zone for full details</div>
+  <div class="zone-grid" id="zone-grid">
+    <div class="zt z1b" data-di="0" onclick="goToZone(6)">
+      <div class="zt-num">ZONE 01</div>
+      <div class="zt-name">Zion District 1</div>
+      <div class="zt-drv">🚗 Talo<br>🚙 Lisiate & Cherise Fevaleaki</div>
+      <div class="zt-homes">🏠 Filipe Fa · Seleti Fevaleaki · Draper</div>
+      <div class="zt-arrow">→</div>
+    </div>
+    <div class="zt z2b" data-di="70" onclick="goToZone(7)">
+      <div class="zt-num">ZONE 02</div>
+      <div class="zt-name">Zion District 2</div>
+      <div class="zt-drv">🚗 Gooch<br>🚙 Aisea Mounga</div>
+      <div class="zt-homes">🏠 Malietulua · Tafisi · Riverton/SJ</div>
+      <div class="zt-arrow">→</div>
+    </div>
+    <div class="zt z3b" data-di="140" onclick="goToZone(8)">
+      <div class="zt-num">ZONE 03</div>
+      <div class="zt-name">Alma District 1</div>
+      <div class="zt-drv">🚗 Fano<br>🚙 Niu Takai</div>
+      <div class="zt-homes">🏠 Sau Faungupou · Apo Ahohako · SJ</div>
+      <div class="zt-arrow">→</div>
+    </div>
+    <div class="zt z4b" data-di="210" onclick="goToZone(9)">
+      <div class="zt-num">ZONE 04</div>
+      <div class="zt-name">Alma District 2</div>
+      <div class="zt-drv">🚗 Saia<br>🚙 Loa Fa</div>
+      <div class="zt-homes">🏠 Matulino · Danny Steele · Riverton</div>
+      <div class="zt-arrow">→</div>
+    </div>
+    <div class="zt z5b" data-di="280" onclick="goToZone(10)">
+      <div class="zt-num">ZONE 05</div>
+      <div class="zt-name">Zion District YW</div>
+      <div class="zt-drv">🚗 Mark & Leilani Barrett<br>🚙 Grace & Tame Fangupou</div>
+      <div class="zt-homes">🏠 Albert Tai · Siale Hola · Riverton</div>
+      <div class="zt-arrow">→</div>
+    </div>
+    <div class="zt z6b" data-di="350" onclick="goToZone(11)">
+      <div class="zt-num">ZONE 06</div>
+      <div class="zt-name">Alma District YW</div>
+      <div class="zt-drv">🚗 Kalo & Sia Tupouata<br>🚙 Drina & Seisela Lutui</div>
+      <div class="zt-homes">🏠 Seui · Moleni · Sandy/Riverton</div>
+      <div class="zt-arrow">→</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ZONE DETAILS 6–11 ══ -->
+
+<!-- Z1 -->
+<div class="slide zd-slide" id="s6">
+  <div class="zd-header" style="background:linear-gradient(135deg,rgba(13,148,136,.3),rgba(15,118,110,.15));">
+    <div class="zd-badge" style="background:rgba(13,148,136,.3);">🌊</div>
+    <div><div class="zd-zone-title">Zone 1 — Zion District 1</div><div class="zd-zone-sub">Draper · Sat 6:20–7:50 PM · 8 Missionaries</div></div>
+    <div class="zd-back" onclick="goTo(5)">← All Zones</div>
+  </div>
+  <div class="zd-body">
+    <div class="zd-panel" style="border-color:rgba(13,148,136,.3);">
+      <div class="zd-ptitle">🚗 Driver 1 — Talo</div>
+      <div class="name-chips" id="z1d1"></div>
+      <div class="switch-note" style="border-color:#0D9488;">Starts: <strong>Filipe Fa</strong> · Switches to Seleti Fevaleaki at 7:10 PM</div>
+    </div>
+    <div class="zd-panel" style="border-color:rgba(15,118,110,.3);">
+      <div class="zd-ptitle">🚙 Driver 2 — Lisiate & Cherise Fevaleaki</div>
+      <div class="name-chips" id="z1d2"></div>
+      <div class="switch-note" style="border-color:#0F766E;">Starts: <strong>Seleti Fevaleaki</strong> · Switches to Filipe Fa at 7:10 PM</div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home A — Filipe Fa · 167 Flowerfield Dr, Draper</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Talo's Group — Companionship 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Talo's Group — Companionship 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Lisiate's Group — Companionship 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Lisiate's Group — Companionship 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home B — Seleti Fevaleaki · 712 W Stephens View Way, Draper</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Lisiate's Group — Companionship 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Lisiate's Group — Companionship 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Talo's Group — Companionship 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Talo's Group — Companionship 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Z2 -->
+<div class="slide zd-slide" id="s7">
+  <div class="zd-header" style="background:linear-gradient(135deg,rgba(220,38,38,.3),rgba(185,28,28,.15));">
+    <div class="zd-badge" style="background:rgba(220,38,38,.3);">🔥</div>
+    <div><div class="zd-zone-title">Zone 2 — Zion District 2</div><div class="zd-zone-sub">Riverton / South Jordan · Sat 6:20–7:50 PM · 8 Missionaries</div></div>
+    <div class="zd-back" onclick="goTo(5)">← All Zones</div>
+  </div>
+  <div class="zd-body">
+    <div class="zd-panel" style="border-color:rgba(220,38,38,.3);">
+      <div class="zd-ptitle">🚗 Driver 1 — Gooch</div>
+      <div class="name-chips" id="z2d1"></div>
+      <div class="switch-note" style="border-color:#DC2626;">Starts: <strong>Malietulua</strong> · Switches to Tafisi at 7:10 PM</div>
+    </div>
+    <div class="zd-panel" style="border-color:rgba(185,28,28,.3);">
+      <div class="zd-ptitle">🚙 Driver 2 — Aisea Mounga</div>
+      <div class="name-chips" id="z2d2"></div>
+      <div class="switch-note" style="border-color:#B91C1C;">Starts: <strong>Tafisi</strong> · Switches to Malietulua at 7:10 PM</div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home A — Malietulua · 3663 W Salinas Dr, Riverton</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Gooch's Group — Companionship 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Gooch's Group — Companionship 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Aisea's Group — Companionship 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Aisea's Group — Companionship 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home B — Tafisi · 11542 S 2950 W, South Jordan</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Aisea's Group — Companionship 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Aisea's Group — Companionship 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Gooch's Group — Companionship 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Gooch's Group — Companionship 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Z3 -->
+<div class="slide zd-slide" id="s8">
+  <div class="zd-header" style="background:linear-gradient(135deg,rgba(124,58,237,.3),rgba(109,40,217,.15));">
+    <div class="zd-badge" style="background:rgba(124,58,237,.3);">⚡</div>
+    <div><div class="zd-zone-title">Zone 3 — Alma District 1</div><div class="zd-zone-sub">South Jordan · Sat 6:20–7:50 PM · 8 Missionaries</div></div>
+    <div class="zd-back" onclick="goTo(5)">← All Zones</div>
+  </div>
+  <div class="zd-body">
+    <div class="zd-panel" style="border-color:rgba(124,58,237,.3);">
+      <div class="zd-ptitle">🚗 Driver 1 — Fano</div>
+      <div class="name-chips" id="z3d1"></div>
+      <div class="switch-note" style="border-color:#7C3AED;">Starts: <strong>Sau Faungupou</strong> · Switches to Apo Ahohako at 7:10 PM</div>
+    </div>
+    <div class="zd-panel" style="border-color:rgba(109,40,217,.3);">
+      <div class="zd-ptitle">🚙 Driver 2 — Niu Takai</div>
+      <div class="name-chips" id="z3d2"></div>
+      <div class="switch-note" style="border-color:#6D28D9;">Starts: <strong>Apo Ahohako</strong> · Switches to Sau Faungupou at 7:10 PM</div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home A — Sau Faungupou · 11695 S Eureka Way, South Jordan</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Fano's Group — Companionship 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Fano's Group — Companionship 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Niu's Group — Companionship 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Niu's Group — Companionship 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home B — Apo Ahohako · 1962 W Ingot Way, South Jordan</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Niu's Group — Companionship 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Niu's Group — Companionship 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Fano's Group — Companionship 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Fano's Group — Companionship 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Z4 -->
+<div class="slide zd-slide" id="s9">
+  <div class="zd-header" style="background:linear-gradient(135deg,rgba(217,119,6,.3),rgba(180,83,9,.15));">
+    <div class="zd-badge" style="background:rgba(217,119,6,.3);">🌟</div>
+    <div><div class="zd-zone-title">Zone 4 — Alma District 2</div><div class="zd-zone-sub">Riverton / Draper · Sat 6:20–7:50 PM · 8 Missionaries</div></div>
+    <div class="zd-back" onclick="goTo(5)">← All Zones</div>
+  </div>
+  <div class="zd-body">
+    <div class="zd-panel" style="border-color:rgba(217,119,6,.3);">
+      <div class="zd-ptitle">🚗 Driver 1 — Saia</div>
+      <div class="name-chips" id="z4d1"></div>
+      <div class="switch-note" style="border-color:#D97706;">Starts: <strong>Matulino</strong> · Switches to Danny Steele at 7:10 PM</div>
+    </div>
+    <div class="zd-panel" style="border-color:rgba(180,83,9,.3);">
+      <div class="zd-ptitle">🚙 Driver 2 — Loa Fa</div>
+      <div class="name-chips" id="z4d2"></div>
+      <div class="switch-note" style="border-color:#B45309;">Starts: <strong>Danny Steele</strong> · Switches to Matulino at 7:10 PM</div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home A — Matulino · 2150 W 12824 S, Riverton</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Saia's Group — Companionship 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Saia's Group — Companionship 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Loa's Group — Companionship 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Loa's Group — Companionship 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home B — Danny Steele · 13589 S 600 W Unit A311, Draper</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Loa's Group — Companionship 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Loa's Group — Companionship 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Saia's Group — Companionship 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Saia's Group — Companionship 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Z5 -->
+<div class="slide zd-slide" id="s10">
+  <div class="zd-header" style="background:linear-gradient(135deg,rgba(37,99,235,.3),rgba(29,78,216,.15));">
+    <div class="zd-badge" style="background:rgba(37,99,235,.3);">💎</div>
+    <div><div class="zd-zone-title">Zone 5 — Zion District YW</div><div class="zd-zone-sub">Riverton · Sat 6:20–7:50 PM · 9 Missionaries</div></div>
+    <div class="zd-back" onclick="goTo(5)">← All Zones</div>
+  </div>
+  <div class="zd-body">
+    <div class="zd-panel" style="border-color:rgba(37,99,235,.3);">
+      <div class="zd-ptitle">🚗 Driver 1 — Mark & Leilani Barrett</div>
+      <div class="name-chips" id="z5d1"></div>
+      <div class="switch-note" style="border-color:#2563EB;">Starts: <strong>Albert Tai</strong> · Switches to Siale Hola at 7:10 PM</div>
+    </div>
+    <div class="zd-panel" style="border-color:rgba(29,78,216,.3);">
+      <div class="zd-ptitle">🚙 Driver 2 — Grace & Tame Fangupou</div>
+      <div class="name-chips" id="z5d2"></div>
+      <div class="switch-note" style="border-color:#1D4ED8;">Starts: <strong>Siale Hola</strong> · Switches to Albert Tai at 7:10 PM</div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home A — Albert Tai · 1830 W 13400 S, Riverton</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Mark & Leilani's Group — Comp. 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Mark & Leilani's Group — Comp. 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Grace & Tame's Group — Comp. 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Grace & Tame's Group — Comp. 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home B — Siale Hola · 3106 W Desert Rose Dr, Riverton</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Grace & Tame's Group — Comp. 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Grace & Tame's Group — Comp. 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Mark & Leilani's Group — Comp. 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Mark & Leilani's Group — Comp. 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Z6 -->
+<div class="slide zd-slide" id="s11">
+  <div class="zd-header" style="background:linear-gradient(135deg,rgba(147,51,234,.3),rgba(126,34,206,.15));">
+    <div class="zd-badge" style="background:rgba(147,51,234,.3);">👑</div>
+    <div><div class="zd-zone-title">Zone 6 — Alma District YW</div><div class="zd-zone-sub">Sandy / Riverton · Sat 6:20–7:50 PM · 10 Missionaries</div></div>
+    <div class="zd-back" onclick="goTo(5)">← All Zones</div>
+  </div>
+  <div class="zd-body">
+    <div class="zd-panel" style="border-color:rgba(147,51,234,.3);">
+      <div class="zd-ptitle">🚗 Driver 1 — Kalo & Sia Tupouata</div>
+      <div class="name-chips" id="z6d1"></div>
+      <div class="switch-note" style="border-color:#9333EA;">Starts: <strong>Seui</strong> · Switches to Moleni at 7:10 PM</div>
+    </div>
+    <div class="zd-panel" style="border-color:rgba(126,34,206,.3);">
+      <div class="zd-ptitle">🚙 Driver 2 — Drina & Seisela Lutui</div>
+      <div class="name-chips" id="z6d2"></div>
+      <div class="switch-note" style="border-color:#7E22CE;">Starts: <strong>Moleni</strong> · Switches to Seui at 7:10 PM</div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home A — Seui · 200 E 8680 S, Sandy</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Kalo & Sia's Group — Comp. 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Kalo & Sia's Group — Comp. 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Drina & Seisela's Group — Comp. 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Drina & Seisela's Group — Comp. 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+    <div class="zd-panel">
+      <div class="zd-ptitle">🏠 Home B — Moleni · 3361 W Water St, Riverton</div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">1</div><div class="vb-info"><div class="vb-who">Drina & Seisela's Group — Comp. 1</div><div class="vb-when" style="color:#10B981">6:20 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-green"><div class="vb-num" style="color:#10B981">2</div><div class="vb-info"><div class="vb-who">Drina & Seisela's Group — Comp. 2</div><div class="vb-when" style="color:#10B981">6:40 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">3</div><div class="vb-info"><div class="vb-who">Kalo & Sia's Group — Comp. 1</div><div class="vb-when" style="color:#3B82F6">7:10 PM · 20 min</div></div></div>
+      <div class="visit-bar vb-blue"><div class="vb-num" style="color:#3B82F6">4</div><div class="vb-info"><div class="vb-who">Kalo & Sia's Group — Comp. 2</div><div class="vb-when" style="color:#3B82F6">7:30 PM · 20 min</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S12: SEND OFF ══ -->
+<div class="slide" id="s12">
+  <div class="so-title" id="burst-emoji">Go Teach!<br>You Got This 🔥</div>
+  <div class="so-sub">Teach by the Spirit. Testify boldly.<br>The Savior goes with you tonight.</div>
+  <div class="so-pills">
+    <div class="so-pill">📅 Depart 6:15 PM</div>
+    <div class="so-pill">⏱️ 20 min per visit</div>
+    <div class="so-pill">🔄 Switch at 7:00 PM</div>
+    <div class="so-pill">⛪ Back by 7:50 PM</div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<script>
+// ══ STARFIELD CANVAS ══
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, stars = [];
+function resizeCanvas(){
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+function initStars(){
+  stars = [];
+  for(let i=0;i<180;i++){
+    stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.8+.3,speed:Math.random()*.3+.1,phase:Math.random()*Math.PI*2,twinkleSpeed:Math.random()*.02+.005});
+  }
+}
+function drawStars(t){
+  ctx.clearRect(0,0,W,H);
+  stars.forEach(s=>{
+    s.phase+=s.twinkleSpeed;
+    const a=.2+.7*(.5+.5*Math.sin(s.phase));
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.fill();
+  });
+  requestAnimationFrame(drawStars);
+}
+resizeCanvas();initStars();requestAnimationFrame(drawStars);
+window.addEventListener('resize',()=>{resizeCanvas();initStars();});
+
+// ══ CHIP DATA ══
+const chips={
+  z1d1:['Alema Malietulua','Benjamin De Hoyos','Tonga Tafisi','Sione Afemui'],
+  z1d2:['Ramses Mounga','Treasure Matelau','Sam Lapuaho','Paula Havea'],
+  z2d1:["Elijah Te'o","Ethan Hafoka","Lusa Lutui","Talimoni (Moni) Langi"],
+  z2d2:["Jeremiah Takai","Ali'i Te'o","Lopeti Barrett","Siah Fungalei"],
+  z3d1:['Elijah Lutui','KJ Afemui','Fine Langi','Lisiate Vahe'],
+  z3d2:['Isileli Moli','Sione Toutai','Filimone (Mone) Vaivaka','Inoke Vahe'],
+  z4d1:['Falekaono (Ono) Tafisi','Tevita Taulanga','Nanaia (Naia) Vaivaka','Charlie Toutai'],
+  z4d2:["Jayden Galvin","Taitusi Tu'ikolovatu","Sioeli Havea","LJ Fevaleaki"],
+  z5d1:["Sulieti (Suli) Tafisi","'Alilia Hola","Losaline (Line) Kaufusi","Leila Iongi"],
+  z5d2:["Atelaite Fa","Kesaia Pouha","Josephine Pau'u","Ufilini Moli","Amelia (Mia) Levatau"],
+  z6d1:["Selai Taumoefolau","Abby De Hoyos","Pamela Lapu'aho","Leilani Pouha","Veana Pau'u"],
+  z6d2:["Verena Takai","Alice Haunga","Isis Mounga","Naini (Lose) Kaufusi","Temukisa Havea"],
+};
+Object.entries(chips).forEach(([id,names])=>{
+  const el=document.getElementById(id);
+  if(!el)return;
+  names.forEach((n,i)=>{
+    const c=document.createElement('div');
+    c.className='chip chip-green';c.textContent=n;
+    c.style.transitionDelay=i*70+'ms';
+    el.appendChild(c);
+  });
+});
+
+// ══ SLIDE ENGINE ══
+const TOTAL=12;
+let cur=1;
+
+function buildDots(){
+  const wrap=document.getElementById('dots');
+  for(let i=1;i<=TOTAL;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i===1?' on':'');
+    d.onclick=()=>goTo(i);
+    wrap.appendChild(d);
+  }
+}
+buildDots();
+
+function goTo(n){
+  if(n<1||n>TOTAL)return;
+  const prev=document.getElementById('s'+cur);
+  prev.classList.remove('active');prev.classList.add('exit');
+  setTimeout(()=>prev.classList.remove('exit'),500);
+  cur=n;
+  const sl=document.getElementById('s'+cur);
+  sl.classList.add('active');
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i+1===cur));
+  document.getElementById('prog-fill').style.width=((cur/TOTAL)*100)+'%';
+  document.getElementById('counter').textContent=cur+' / '+TOTAL;
+  onEnter(cur);
+  burst();
+}
+function nav(d){goTo(cur+d);}
+function goToZone(n){goTo(n);}
+
+// ══ ENTER HOOKS ══
+function onEnter(n){
+  if(n===2){
+    document.querySelectorAll('.brief-card').forEach(c=>{
+      setTimeout(()=>c.classList.add('in'),parseInt(c.dataset.di||0));
+    });
+  }
+  if(n===3){
+    document.querySelectorAll('.tl-row').forEach(r=>{
+      setTimeout(()=>r.classList.add('in'),parseInt(r.dataset.di||0));
+    });
+  }
+  if(n===5){
+    document.querySelectorAll('.zt').forEach(t=>{
+      setTimeout(()=>t.classList.add('in'),parseInt(t.dataset.di||0));
+    });
+  }
+  if(n>=6&&n<=11){
+    const panels=document.querySelectorAll('#s'+n+' .zd-panel');
+    panels.forEach((p,i)=>{
+      setTimeout(()=>{
+        p.classList.add('in');
+        p.querySelectorAll('.chip').forEach((c,j)=>{
+          setTimeout(()=>c.classList.add('in'),j*65);
+        });
+      },i*110);
+    });
+  }
+  if(n===12){
+    launchConfetti();
+    const e=document.getElementById('burst-emoji');
+    e.style.animation='none';void e.offsetWidth;e.style.animation='';
+  }
+}
+
+// ══ DOOR KNOCK ══
+let kLocked=false;
+function doKnock(){
+  if(kLocked)return;kLocked=true;
+  const door=document.getElementById('dk-door');
+  door.classList.remove('knock');void door.offsetWidth;door.classList.add('knock');
+  ['dkw1','dkw2','dkw3'].forEach((id,i)=>{
+    const w=document.getElementById(id);
+    w.style.animation='none';void w.offsetWidth;
+    w.style.animation=`waveOut .8s ease-out ${i*.15}s forwards`;
+  });
+  setTimeout(()=>{door.classList.remove('knock');kLocked=false;},600);
+}
+
+// ══ CONFETTI ══
+function launchConfetti(){
+  const colors=['FDE68A','F59E0B','10B981','3B82F6','EC4899','8B5CF6','F97316','0D9488'];
+  for(let i=0;i<70;i++){
+    setTimeout(()=>{
+      const p=document.createElement('div');
+      p.className='conf';
+      const c=colors[Math.floor(Math.random()*colors.length)];
+      const sz=5+Math.random()*9;
+      p.style.cssText=`left:${Math.random()*100}%;top:-10px;width:${sz}px;height:${sz}px;background:#${c};animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*.4}s;`;
+      document.body.appendChild(p);
+      setTimeout(()=>p.remove(),4000);
+    },i*50);
+  }
+}
+
+// ══ SLIDE BURST ══
+function burst(){
+  const colors=['FDE68A','0D9488','3B82F6','FFFFFF','F59E0B'];
+  for(let i=0;i<16;i++){
+    const p=document.createElement('div');
+    p.className='ptcl';
+    const angle=(i/16)*Math.PI*2;
+    const dist=60+Math.random()*80;
+    const sz=3+Math.random()*5;
+    p.style.cssText=`left:50%;top:50%;width:${sz}px;height:${sz}px;background:#${colors[i%colors.length]};--tx:${Math.cos(angle)*dist}px;--ty:${Math.sin(angle)*dist}px;animation-duration:${.5+Math.random()*.3}s;`;
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),900);
+  }
+}
+
+// ══ KEYBOARD ══
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' ')nav(1);
+  else if(e.key==='ArrowLeft')nav(-1);
+  else if(e.key==='Escape')goTo(1);
+  else if(e.key>='1'&&e.key<='9')goTo(+e.key);
+});
+
+// swipe
+let touchX=0;
+document.addEventListener('touchstart',e=>{touchX=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-touchX;
+  if(Math.abs(dx)>60)nav(dx<0?1:-1);
+},{passive:true});
+</script>
+</body>
+</html>
